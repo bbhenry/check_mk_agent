@@ -2,7 +2,7 @@
 
 cli_password="password"
 
-# Connection to Freeswich fails
+# Check FreeSWITCH connection status
 connection=`/usr/local/freeswitch/bin/fs_cli -p $cli_password -x "show calls count"`
 if [ $? -ne 0 ]; then
         connection_status=2
