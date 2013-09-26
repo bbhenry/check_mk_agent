@@ -26,7 +26,7 @@ fi
 # Check calls per second
 cps=`/usr/local/freeswitch/bin/fs_cli -p $cli_password -x "status" | grep -o -P "(?<=\(s\) )[0-9]+(?=/)"`
 
-if [ $cps -gt 20]; then
+if [ $cps -gt 20 ]; then
 	cps_status=2
 	cps_result="Possible DDos attack"
 else
