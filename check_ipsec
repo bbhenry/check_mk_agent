@@ -18,10 +18,10 @@ DOWN=""
 # ---------- Change to your needs ----------
 # PLUGINPATH="/usr/lib/nagios/plugins"
 GATEWAYLIST="gateways.txt"
-IPSECBIN="/usr/sbin/ipsec"
+IPSECBIN="/usr/local/sbin/ipsec"
 # ------------------------------------------
 
-# Testing availability of $IPSECBIN and $GATEWAYLIST
+# Testing availability of $IPSECBIN, $FPINGBIN and $GATEWAYLIST
 
 test -e $IPSECBIN
 if [ $? -ne 0 ];
@@ -85,6 +85,7 @@ check_tunnel() {
 			echo "0 VPN_Tunnel_$CONN - VPN Tunnel $CONN is up and running."
     		else
 			echo "2 VPN_Tunnel_$CONN - VPN Tunnel $CONN is down."
+			RECONNECT=`$IPSECBIN up $CONN`
 		fi
 
 	i=$[$i+1]
