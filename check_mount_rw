@@ -26,7 +26,6 @@ check_mount_rw() {
 
 	for a in "${MOUNTPOINTS[@]}"
 	do
-		echo $a
 		DIRECTORY=`echo $a | cut -f1 -d:`
 		CONNECTIONTYPE=`echo $a | cut -f2 -d:`
 		if [[ -e $DIRECTORY/$TESTFILE ]]; then
