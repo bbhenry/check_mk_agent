@@ -22,54 +22,57 @@ print_help() {
 }
 
 check_mount_rw() {
-	DIRECTORIES=(`grep -E 'glusterfs|nfs' /proc/mounts | awk '{print $2}'`)
+	MOUNTPOINTS=(`grep -E 'glusterfs|nfs' /proc/mounts | awk '{print $2":"$3}'`)
 
-	for i in "${DIRECTORIES[@]}"
+	for a in "${MOUNTPOINTS[@]}"
 	do
-		if [[ -e $i/$TESTFILE ]]; then
-			echo "2 Mount_RW:$i - Testfile $TESTFILE under $i already exist"
-			rm -f $i/$TESTFILE
+		echo $a
+		DIRECTORY=`echo $a | cut -f1 -d:`
+		CONNECTIONTYPE=`echo $a | cut -f2 -d:`
+		if [[ -e $DIRECTORY/$TESTFILE ]]; then
+			echo "2 Mount_RW($CONNECTIONTYPE):$DIRECTORY - Testfile $TESTFILE under $DIRECTORY already exist"
+			rm -f $DIRECTORY/$TESTFILE
 			continue
 		fi
 
-		timeout 1s echo $RAND > $i/$TESTFILE
+		timeout 1s echo $RAND > $DIRECTORY/$TESTFILE
 		RET_W=$?
 		if [[ $RET_W -eq 124 ]]; then
-			echo "2 Mount_RW:$i - Writing test file to $i timed out"
+			echo "2 Mount_RW($CONNECTIONTYPE):$DIRECTORY - Writing test file to $DIRECTORY timed out"
 			continue
 		elif [[ $RET_W -ne 0 ]]; then
-			echo "3 Mount_RW:$i - Unknown write error $RET has occured while writing test file to $i"
+			echo "3 Mount_RW($CONNECTIONTYPE):$DIRECTORY - Unknown write error $RET has occured while writing test file to $DIRECTORY"
 			continue
 		fi
 
-		TESTREAD=`timeout 1s cat $i/$TESTFILE`
+		TESTREAD=`timeout 1s cat $DIRECTORY/$TESTFILE`
 		RET_R=$?
 		if [[ $RET_R -eq 124 ]]; then
-			echo "2 Mount_RW:$i - Reading test from $i/$TESTFILE timed out"
+			echo "2 Mount_RW($CONNECTIONTYPE):$DIRECTORY - Reading test from $DIRECTORY/$TESTFILE timed out"
 			continue
 		elif [[ $RET_R -ne 0 ]]; then
-			echo "3 Mount_RW:$i - Unknown read error $RET has occured while reading test file from $i"
+			echo "3 Mount_RW($CONNECTIONTYPE):$DIRECTORY - Unknown read error $RET has occured while reading test file from $DIRECTORY"
 			continue
 		fi
 
 		if [[ $TESTREAD -eq $RAND ]]; then
-			timeout 1s rm -f $i/$TESTFILE
+			timeout 1s rm -f $DIRECTORY/$TESTFILE
 			RET_RM=$?
 			if [[ $RET_RM -ne 0 ]]; then
-				echo "2 Mount_RW:$i - Failed to remove the test file after creating it under $i"
+				echo "2 Mount_RW($CONNECTIONTYPE):$DIRECTORY - Failed to remove the test file after creating it under $DIRECTORY"
 				continue
 			else
-				echo "0 Mount_RW:$i - Write and read test to the $i mount point was successful"
+				echo "0 Mount_RW($CONNECTIONTYPE):$DIRECTORY - Write and read test to the $DIRECTORY mount point was successful"
 				continue
 			fi
 		else
-			echo "2 Mount_RW:$i - Content in the test file from $i/$TESTFILE does not match the source input"
+			echo "2 Mount_RW($CONNECTIONTYPE):$DIRECTORY - Content in the test file from $DIRECTORY/$TESTFILE does not match the source input"
 			continue
 		fi
 	done
 }
 
-case "$1" in
+case "$DIRECTORY" in
 	-h)
 		print_help
 		exit 0
