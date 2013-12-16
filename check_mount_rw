@@ -40,7 +40,7 @@ check_mount_rw() {
 			echo "2 Mount_RW($CONNECTIONTYPE):$DIRECTORY - Writing test file to $DIRECTORY timed out"
 			continue
 		elif [[ $RET_W -ne 0 ]]; then
-			echo "3 Mount_RW($CONNECTIONTYPE):$DIRECTORY - Unknown write error $RET has occured while writing test file to $DIRECTORY"
+			echo "3 Mount_RW($CONNECTIONTYPE):$DIRECTORY - Unknown write error $RET_W has occured while writing test file to $DIRECTORY"
 			continue
 		fi
 
@@ -50,7 +50,7 @@ check_mount_rw() {
 			echo "2 Mount_RW($CONNECTIONTYPE):$DIRECTORY - Reading test from $DIRECTORY/$TESTFILE timed out"
 			continue
 		elif [[ $RET_R -ne 0 ]]; then
-			echo "3 Mount_RW($CONNECTIONTYPE):$DIRECTORY - Unknown read error $RET has occured while reading test file from $DIRECTORY"
+			echo "3 Mount_RW($CONNECTIONTYPE):$DIRECTORY - Unknown read error $RET_R has occured while reading test file from $DIRECTORY"
 			continue
 		fi
 
