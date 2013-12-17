@@ -1,3 +1,4 @@
+root@adm01-san:/usr/lib/check_mk_agent/local# cat check_mount_rw
 #!/bin/bash
 
 PROGNAME=`basename $0`
@@ -22,14 +23,14 @@ print_help() {
 }
 
 check_mount_rw() {
-	MOUNTPOINTS=(`grep -E 'glusterfs|nfs' /proc/mounts | awk '{print $2":"$3}'`)
+	MOUNTPOINTS=(`grep -E 'glusterfs|nfs' /proc/mounts | awk '{ gsub("fuse.glusterfs","glusterfs",$3); print $2":"toupper($3) }'`)
 
 	for a in "${MOUNTPOINTS[@]}"
 	do
 		DIRECTORY=`echo $a | cut -f1 -d:`
 		CONNECTIONTYPE=`echo $a | cut -f2 -d:`
 		if [[ -e $DIRECTORY/$TESTFILE ]]; then
-			echo "2 Mount_RW($CONNECTIONTYPE):$DIRECTORY - Testfile $TESTFILE under $DIRECTORY already exist"
+			echo "2 Mount_${CONNECTIONTYPE}_RW_:$DIRECTORY - Testfile $TESTFILE under $DIRECTORY already exist"
 			rm -f $DIRECTORY/$TESTFILE
 			continue
 		fi
@@ -37,20 +38,20 @@ check_mount_rw() {
 		timeout 1s echo $RAND > $DIRECTORY/$TESTFILE
 		RET_W=$?
 		if [[ $RET_W -eq 124 ]]; then
-			echo "2 Mount_RW($CONNECTIONTYPE):$DIRECTORY - Writing test file to $DIRECTORY timed out"
+			echo "2 Mount_${CONNECTIONTYPE}_RW_:$DIRECTORY - Writing test file to $DIRECTORY timed out"
 			continue
 		elif [[ $RET_W -ne 0 ]]; then
-			echo "3 Mount_RW($CONNECTIONTYPE):$DIRECTORY - Unknown write error $RET_W has occured while writing test file to $DIRECTORY"
+			echo "3 Mount_${CONNECTIONTYPE}_RW_:$DIRECTORY - Unknown write error $RET_W has occured while writing test file to $DIRECTORY"
 			continue
 		fi
 
 		TESTREAD=`timeout 1s cat $DIRECTORY/$TESTFILE`
 		RET_R=$?
 		if [[ $RET_R -eq 124 ]]; then
-			echo "2 Mount_RW($CONNECTIONTYPE):$DIRECTORY - Reading test from $DIRECTORY/$TESTFILE timed out"
+			echo "2 Mount_${CONNECTIONTYPE}_RW_:$DIRECTORY - Reading test from $DIRECTORY/$TESTFILE timed out"
 			continue
 		elif [[ $RET_R -ne 0 ]]; then
-			echo "3 Mount_RW($CONNECTIONTYPE):$DIRECTORY - Unknown read error $RET_R has occured while reading test file from $DIRECTORY"
+			echo "3 Mount_${CONNECTIONTYPE}_RW_:$DIRECTORY - Unknown read error $RET_R has occured while reading test file from $DIRECTORY"
 			continue
 		fi
 
@@ -58,14 +59,14 @@ check_mount_rw() {
 			timeout 1s rm -f $DIRECTORY/$TESTFILE
 			RET_RM=$?
 			if [[ $RET_RM -ne 0 ]]; then
-				echo "2 Mount_RW($CONNECTIONTYPE):$DIRECTORY - Failed to remove the test file after creating it under $DIRECTORY"
+				echo "2 Mount_${CONNECTIONTYPE}_RW_:$DIRECTORY - Failed to remove the test file after creating it under $DIRECTORY"
 				continue
 			else
-				echo "0 Mount_RW($CONNECTIONTYPE):$DIRECTORY - Write and read test to the $DIRECTORY mount point was successful"
+				echo "0 Mount_${CONNECTIONTYPE}_RW_:$DIRECTORY - Write and read test to the $DIRECTORY mount point was successful"
 				continue
 			fi
 		else
-			echo "2 Mount_RW($CONNECTIONTYPE):$DIRECTORY - Content in the test file from $DIRECTORY/$TESTFILE does not match the source input"
+			echo "2 Mount_${CONNECTIONTYPE}_RW_:$DIRECTORY - Content in the test file from $DIRECTORY/$TESTFILE does not match the source input"
 			continue
 		fi
 	done
