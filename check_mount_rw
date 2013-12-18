@@ -1,4 +1,3 @@
-root@adm01-san:/usr/lib/check_mk_agent/local# cat check_mount_rw
 #!/bin/bash
 
 PROGNAME=`basename $0`
@@ -72,17 +71,22 @@ check_mount_rw() {
 	done
 }
 
-case "$DIRECTORY" in
-	-h)
-		print_help
-		exit 0
-		;;
-	-V)
-		echo "$PROGNAME version: $REVISION"
-		exit 0
-		;;
-	*)
-		check_mount_rw
-		exit 0
-		;;
-esac
+while getopts "hv" opt; do
+	case "$opt" in
+		h)
+			print_help
+			exit 0
+			;;
+		v)
+			echo "$PROGNAME version: $REVISION"
+			exit 0
+			;;
+		\?)
+			print_help
+			exit 0
+			;;
+	esac
+done
+
+check_mount_rw
+exit 0
