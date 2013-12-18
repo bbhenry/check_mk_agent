@@ -1,2 +1,1 @@
-check_mk_local
-==============
+test
