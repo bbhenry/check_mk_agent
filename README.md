@@ -29,6 +29,9 @@ The service description will even specify what type of remote file system the mo
 0 Mount_GLUSTERFS_RW_:/storage - Write and read test to the /storage mount point was successful
 ```
 
+## License
+Copyright (c) 2013 Henry Huang. See the LICENSE file for license rights and limitations (MIT).
+
   [1]: http://mathias-kettner.de/checkmk_localchecks.html
   [2]: http://blog.unicsolution.com/2013/11/best-monitoring-solution-omd-nagios.html
   [3]: http://exchange.nagios.org/
