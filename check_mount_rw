@@ -3,8 +3,8 @@
 PROGNAME=`basename $0`
 PROGPATH=`echo $0 | sed -e 's,[\\/][^\\/][^\\/]*$,,'`
 REVISION="1.0"
-
-TESTFILE="check_mount_rw-testfile"
+FQDNNAME=`hostname -f`
+TESTFILE="test-rw-$FQDNNAME"
 RAND=$RANDOM
 
 print_usage() {
@@ -29,15 +29,15 @@ check_mount_rw() {
 		DIRECTORY=`echo $a | cut -f1 -d:`
 		CONNECTIONTYPE=`echo $a | cut -f2 -d:`
 		if [[ -e $DIRECTORY/$TESTFILE ]]; then
-			echo "2 Mount_${CONNECTIONTYPE}_RW_:$DIRECTORY - Testfile $TESTFILE under $DIRECTORY already exist"
+			echo "2 Mount_${CONNECTIONTYPE}_RW_:$DIRECTORY - Test file $DIRECTORY/$TESTFILE already exist"
 			rm -f $DIRECTORY/$TESTFILE
 			continue
 		fi
 
 		timeout 1s echo $RAND > $DIRECTORY/$TESTFILE
 		RET_W=$?
-		if [[ $RET_W -eq 124 ]]; then
-			echo "2 Mount_${CONNECTIONTYPE}_RW_:$DIRECTORY - Writing test file to $DIRECTORY timed out"
+		if [[ $RET_W -eq 124 || $RET_W -eq 137 ]]; then
+			echo "2 Mount_${CONNECTIONTYPE}_RW_:$DIRECTORY - Writing test file to $DIRECTORY/$TESTFILE timed out"
 			continue
 		elif [[ $RET_W -ne 0 ]]; then
 			echo "3 Mount_${CONNECTIONTYPE}_RW_:$DIRECTORY - Unknown write error $RET_W has occured while writing test file to $DIRECTORY"
@@ -46,19 +46,22 @@ check_mount_rw() {
 
 		TESTREAD=`timeout 1s cat $DIRECTORY/$TESTFILE`
 		RET_R=$?
-		if [[ $RET_R -eq 124 ]]; then
+		if [[ $RET_R -eq 124 || $RET_R -eq 137 ]]; then
 			echo "2 Mount_${CONNECTIONTYPE}_RW_:$DIRECTORY - Reading test from $DIRECTORY/$TESTFILE timed out"
 			continue
 		elif [[ $RET_R -ne 0 ]]; then
-			echo "3 Mount_${CONNECTIONTYPE}_RW_:$DIRECTORY - Unknown read error $RET_R has occured while reading test file from $DIRECTORY"
+			echo "3 Mount_${CONNECTIONTYPE}_RW_:$DIRECTORY - Unknown read error $RET_R has occured while reading test file from $DIRECTORY/$TESTFILE"
 			continue
 		fi
 
 		if [[ $TESTREAD -eq $RAND ]]; then
 			timeout 1s rm -f $DIRECTORY/$TESTFILE
 			RET_RM=$?
-			if [[ $RET_RM -ne 0 ]]; then
-				echo "2 Mount_${CONNECTIONTYPE}_RW_:$DIRECTORY - Failed to remove the test file after creating it under $DIRECTORY"
+			if [[ $RET_RM -eq 124 || $RET_RM -eq 137 ]]; then
+				echo "2 Mount_${CONNECTIONTYPE}_RW_:$DIRECTORY - Removing the test file from $DIRECTORY/$TESTFILE timed out"
+				continue
+			elif [[ $RET_RM -ne 0 ]]; then
+				echo "2 Mount_${CONNECTIONTYPE}_RW_:$DIRECTORY - Failed to remove the test file from $DIRECTORY/$TESTFILE"
 				continue
 			else
 				echo "0 Mount_${CONNECTIONTYPE}_RW_:$DIRECTORY - Write and read test to the $DIRECTORY mount point was successful"
