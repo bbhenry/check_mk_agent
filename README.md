@@ -12,6 +12,17 @@ If you don't know how or where to install these custom checks on your Check_MK e
 ### check_mount_rw
 Even though the Check_MK agent already monitor the NFS mount points by default, weird situation could happen at the read and write level while the mount point seems perfectly fine. The script is used to catch those situations for not only NFS but also GlusterFS mount points.
 
+**Requirement**
+`timeout` binary is required to run this script. For Ubuntu servers older than version 12.04, there is a package called `timeout`, you can install it like this
+```bash
+apt-get install timeout
+```
+For Ubuntu 12.04 and above, the `timeout` command is included in a package called `coreutils`. If you it's not already installed, you can install it like this
+```bash
+apt-get install coreutils
+```
+The `timeout` command from these two different packages generate different exit code when a command it's trying to run times out. One would generate code 128 and the other one as 137. I have included in the script to detect both scenarios.
+
 **Feature**
 
 1. The script finds all NFS or GlusterFS mount points on your system.
