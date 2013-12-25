@@ -21,7 +21,7 @@ For Ubuntu 12.04 and above, the `timeout` command is included in a package calle
 ```bash
 apt-get install coreutils
 ```
-The `timeout` command from these two different packages generate different exit code when a command it's trying to run times out. One would generate code 128 and the other one as 137. I have included in the script to detect both scenarios.
+The `timeout` command from these two different packages generate different exit code when a command it's trying to run times out. One would generate code 124 and the other one as 137. I have included in the script to detect both scenarios.
 
 **Feature**
 
