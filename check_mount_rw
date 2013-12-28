@@ -28,7 +28,13 @@ check_mount_rw() {
 	do
 		DIRECTORY=`echo $a | cut -f1 -d:`
 		CONNECTIONTYPE=`echo $a | cut -f2 -d:`
-		if [[ -e $DIRECTORY/$TESTFILE ]]; then
+
+		timeout 1s ls $DIRECTORY/$TESTFILE
+		RET_V=$?
+		if [[ $RET_V -eq 124 || $RET_V -eq 137 ]]; then
+			echo "2 Mount_${CONNECTIONTYPE}_RW_:$DIRECTORY - Accessing mount point $DIRECTORY timed out"
+			continue
+		elif [[ $RET_V -eq 0 ]]; then
 			echo "2 Mount_${CONNECTIONTYPE}_RW_:$DIRECTORY - Test file $DIRECTORY/$TESTFILE already exist"
 			rm -f $DIRECTORY/$TESTFILE
 			continue
