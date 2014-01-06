@@ -1,0 +1,58 @@
+#!/bin/bash
+
+STATUSCODES="200 206 301 304 400 401 403 404 416 500 501 503 504"
+ACCESSLOG="/var/log/apache2/access_log"
+
+# Define date and time for search purpose
+MINUTEAGO=`date -d "1 minutes ago" +"%d/%b/%Y:%H:%M:%S"`
+NOW=`date +"%d/%b/%Y:%H:%M:"`
+
+BREAKDOWN=`echo $MINUTEAGO | awk -F: '{print $1, $2, $3, $4}'`
+read YEAR HOUR MINUTE SECOND <<< $BREAKDOWN
+SECOND=$((10#$SECOND))
+
+# Create Check_MK output Function
+check_mk_output() {
+for code in $STATUSCODES
+do
+        CODECOUNTS=`echo "$LOGRESULT" | awk '{print $9}' | grep -c ${code}`
+        PERFDATA="${PERFDATA}${code}=${CODECOUNTS}|"
+done
+
+echo "0 Check_HTTP_Code_Counter ${PERFDATA%?} Just collecting status code counts"
+exit 0
+}
+
+# Logic for grep terms
+if [[ $SECOND -lt 10 ]]; then
+	SEARCHTERM="${YEAR}:${HOUR}:${MINUTE}:0[${SECOND}-9]"
+	LOGRESULT=`grep "${SEARCHTERM}" -A 999999 $ACCESSLOG`
+
+	if [[ -z "$LOGRESULT" ]]; then
+		SEARCHTERM="${YEAR}:${HOUR}:${MINUTE}:[1-5][0-9]"
+		LOGRESULT=`grep "${SEARCHTERM}" -A 999999 $ACCESSLOG`
+	else
+		check_mk_output
+	fi
+
+elif [[ $SECOND -lt 50 ]]; then
+	SEARCHTERM="${YEAR}:${HOUR}:${MINUTE}:${SECOND:0:1}[${SECOND: -1:1}-9]"
+	LOGRESULT=`grep "${SEARCHTERM}" -A 999999 $ACCESSLOG`
+
+	if [[ -z "$LOGRESULT" ]]; then
+		SEARCHTERM="${YEAR}:${HOUR}:${MINUTE}:[$((${SECOND:0:1} + 1))-5][0-9]"
+		LOGRESULT=`grep "${SEARCHTERM}" -A 999999 $ACCESSLOG`
+	else
+		check_mk_output
+	fi
+
+else
+	SEARCHTERM="${YEAR}:${HOUR}:${MINUTE}:5[${SECOND: -1:1}-9]"
+	LOGRESULT=`grep "${SEARCHTERM}" -A 999999 $ACCESSLOG`
+fi
+
+if [[ -z "$LOGRESULT" && $SECOND -ne 0 ]]; then
+	LOGRESULT=`grep "${NOW}" -A 999999 $ACCESSLOG`
+fi
+
+check_mk_output
