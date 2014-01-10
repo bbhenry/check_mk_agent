@@ -1,5 +1,9 @@
 #!/bin/bash
 
+#The MIT License (MIT)
+#Henry Huang (http://blog.unicsolution.com)
+#Most updated file: https://github.com/bbhenry/check_mk_local/edit/master/check_mount_rw
+
 PROGNAME=`basename $0`
 PROGPATH=`echo $0 | sed -e 's,[\\/][^\\/][^\\/]*$,,'`
 REVISION="1.0"
