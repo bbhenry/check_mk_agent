@@ -20,6 +20,7 @@ do
 done
 
 echo "0 Check_HTTP_Code_Counter ${PERFDATA%?} Just collecting status code counts"
+# % is bash parameter substitution operators which remove from shortest rear
 exit 0
 }
 
