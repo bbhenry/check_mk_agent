@@ -1,0 +1,33 @@
+#!/bin/bash
+# The MIT License (MIT)
+# Henry Huang (http://blog.unicsolution.com)
+# My Github:
+# This script only works for multi-threaded programs
+
+PROGNAME="asterisk"
+WARN=40
+CRITICAL=50
+
+
+CPU_UTIL=`top -bn 1|grep $PROGNAME|awk '{print $9}'`
+CPU_NUM=`grep -E '^CPU|^processor' < /proc/cpuinfo | wc -l`
+WARN_PROPORTION=$((${WARN}*${CPU_NUM}))
+CRIT_PROPORTION=$((${CRITICAL}*${CPU_NUM}))
+
+check_mk_output() {
+	if [[ -z "$CPU_UTIL" ]]; then
+		echo "3 Check_Proc_CPU - No system output for ${PROGNAME} "
+	elif [[ ${CPU_UTIL} -lt ${WARN_PROPORTION} ]]; then
+		echo "0 Check_Proc_CPU ${PROGNAME}_cpu=${CPU_UTIL}%;;;; ${PROGNAME} cpu utilization ${CPU_UTIL}% looks OK"
+	elif [[ ${CPU_UTIL} -gt ${CRIT_PROPORTION} ]]; then
+		echo "2 Check_Proc_CPU ${PROGNAME}_cpu=${CPU_UTIL}%;;;; ${PROGNAME} cpu utilization ${CPU_UTIL}% is too high"
+	else
+		echo "1 Check_Proc_CPU ${PROGNAME}_cpu=${CPU_UTIL}%;;;; ${PROGNAME} cpu utilization ${CPU_UTIL}% is above normal"
+	fi
+
+	exit 0
+}
+
+check_mk_output
+
+exit 0
