@@ -7,7 +7,7 @@
 WARN=90
 CRIT=95
 
-INODE_CHECK=`df -PTlhi -x smbfs -x tmpfs -x cifs -x iso9660 -x udf -x nfsv4 | grep -v \/mnt| sed 1d`
+INODE_CHECK=`df -PTlhi -x smbfs -x tmpfs -x cifs -x iso9660 -x udf -x nfsv4 -x devtmpfs | grep -v \/mnt| sed 1d`
 
 echo "$INODE_CHECK" | awk -v WARN=$WARN -v CRIT=$CRIT '(match($6, /[0123456789]+/)) {
 	iperc= int(substr($6, RSTART, RLENGTH));
