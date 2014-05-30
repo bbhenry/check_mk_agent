@@ -1,0 +1,14 @@
+if which virsh >/dev/null; then
+        echo '<<<qemu>>>'
+        virsh list | grep -v 'State' | grep -v '^--' | grep -v '^$' | while read L
+        do
+                ID=$(echo $L | awk '{print $1}')
+                NAME=$(echo $L | awk '{print $2}')
+                STATE=$(echo $L | awk '{print $3}')
+                DOMINFO=$(virsh dominfo $NAME)
+                CPU=$(echo "${DOMINFO}" | grep 'CPU(s)' | awk '{print $2}')
+                MEM=$(echo "${DOMINFO}" | grep 'Used memory' | awk '{print $3}')
+                let MEM=MEM/1024
+                echo $ID" "$NAME" "$STATE" "$CPU" "$MEM
+        done
+fi
