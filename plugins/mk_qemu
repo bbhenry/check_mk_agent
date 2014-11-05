@@ -1,3 +1,4 @@
+#!/bin/sh
 if which virsh >/dev/null; then
         echo '<<<qemu>>>'
         virsh list | grep -v 'State' | grep -v '^--' | grep -v '^$' | while read L
