@@ -1,0 +1,36 @@
+#!/bin/bash
+
+CONF_PATH="/etc/keepalived/keepalived.conf"
+
+# Check if keepalived is configured on this server
+# Then see if keepalived is running
+if [ -s ${CONF_PATH} ]; then
+	if pgrep keepalived > /dev/null 2>&1; then
+		IPS=($(grep -E -o '[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}/' "${CONF_PATH}"))
+	else
+		echo "1 Virtual_IP - Keepalived is not running on this server."
+		exit
+	fi
+else
+	exit
+fi
+
+# Check if virtual IP is assigned to this server
+IP_STATS=`ip addr`
+LENGTH=${#IPS[@]}
+PRIMARY=0
+for i in ${IPS[@]}; do
+	if echo "$IP_STATS" | grep -q "$i"; then
+		PRIMARY=$(($PRIMARY+1))
+	fi
+done
+
+if [ $PRIMARY -eq 0 ]; then
+	echo "0 Virtual_IP - Backup: This is the backup or secondary server of the cluster"
+elif [ $PRIMARY -eq $LENGTH ]; then
+	echo "0 Virtual_IP - Primary: This is the primary server of the cluster"
+else
+	echo "2 Virtual_IP - Primary: Virtual IP is missing from this primary server"
+fi
+
+exit
