@@ -8,7 +8,7 @@ if [ -s ${CONF_PATH} ]; then
 	if pgrep keepalived > /dev/null 2>&1; then
 		IPS=($(grep -E -o '[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}/' "${CONF_PATH}"))
 	else
-		echo "1 Virtual_IP - Keepalived is not running on this server."
+		echo "2 Virtual_IP - Keepalived is not running on this server."
 		exit
 	fi
 else
@@ -31,6 +31,20 @@ elif [ $PRIMARY -eq $LENGTH ]; then
 	echo "0 Virtual_IP - Primary: This is the primary server of the cluster"
 else
 	echo "2 Virtual_IP - Primary: Virtual IP is missing from this primary server"
+fi
+
+# Check if HA status has changed or not
+NAME=$(grep -P -o 'virtual_router_id \K\w+' /etc/keepalived/keepalived.conf)
+COUNTER_PATH="/etc/keepalived/COUNTER"
+if [ -s ${COUNTER_PATH} ]; then
+	COUNTER=$(wc -l < $COUNTER_PATH)
+	if [ $COUNTER -gt 1 ]; then
+		echo "2 Virtual_Router_$NAME - The HA status has changed $COUNTER times"
+	else
+		echo "1 Virtual_Router_$NAME - The HA status has changed $COUNTER time"
+	fi
+else
+	echo "0 Virtual_Router_$NAME - The HA status is stable"
 fi
 
 exit
