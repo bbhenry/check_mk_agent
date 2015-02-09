@@ -6,7 +6,8 @@ CONF_PATH="/etc/keepalived/keepalived.conf"
 # Then see if keepalived is running
 if [ -s ${CONF_PATH} ]; then
 	if pgrep keepalived > /dev/null 2>&1; then
-		IPS=($(grep -E -o '[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}/' "${CONF_PATH}"))
+		# Capture IPs within the virtual_ipaddress section
+		IPS=($(sed -n "/virtual_ipaddress/,/\}/p" ${CONF_PATH} | grep -E -o '[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}/'))
 	else
 		echo "2 Virtual_IP - Keepalived is not running on this server."
 		exit
