@@ -1,6 +1,8 @@
 #!/bin/bash
 
 CONF_PATH="/etc/keepalived/keepalived.conf"
+MASTER_FILE="/etc/keepalived/MASTER"
+NAME=$(grep -P -o 'virtual_router_id \K\w+' /etc/keepalived/keepalived.conf)
 
 # Check if keepalived is configured on this server
 # Then see if keepalived is running
@@ -26,16 +28,17 @@ for i in ${IPS[@]}; do
 	fi
 done
 
-if [ $PRIMARY -eq 0 ]; then
+if [[ $PRIMARY -eq 0 && ! -e ${MASTER_FILE} ]]; then
 	echo "0 Virtual_IP - Backup: This is the backup or secondary server of the cluster"
-elif [ $PRIMARY -eq $LENGTH ]; then
+elif [[ $PRIMARY -eq $LENGTH && -e ${MASTER_FILE} ]]; then
 	echo "0 Virtual_IP - Primary: This is the primary server of the cluster"
+elif [ $PRIMARY -eq $LENGTH ]; then
+	echo "2 Virtual_IP - We might a split-brian situation. Check Virtual IP on both servers"
 else
 	echo "2 Virtual_IP - Primary: Virtual IP is missing from this primary server"
 fi
 
 # Check if HA status has changed or not
-NAME=$(grep -P -o 'virtual_router_id \K\w+' /etc/keepalived/keepalived.conf)
 COUNTER_PATH="/etc/keepalived/COUNTER"
 if [ -s ${COUNTER_PATH} ]; then
 	COUNTER=$(wc -l < $COUNTER_PATH)
