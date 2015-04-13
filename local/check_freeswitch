@@ -1,41 +1,166 @@
 #!/bin/bash
 
-cli_password="password"
+EPOCH_NOW=$(date +%s)
+ZOMBIE_RING_DURATION=120
+ZOMBIE_CALL_DURATION=7200
+ZOMBIE_WARN=75
+ZOMBIE_CRIT=85
+DoS_WARN=80
+DoS_CRIT=100
 
-# Check FreeSWITCH connection status
-connection=`/usr/local/freeswitch/bin/fs_cli -p $cli_password -x "show calls count"`
+FS_PASS="password"
+
+# Connection to Freeswich fails
+DETAILED_CALLS=`/usr/local/freeswitch/bin/fs_cli -p ${FS_PASS} -x "show detailed_calls as delim %"`
+
 if [ $? -ne 0 ]; then
-        connection_status=2
-        connection_result="Critical: Freeswitch not responding!"
-        echo "$connection_status Call_Count - $connection_result"
-        echo "$connection_status Calls_Per_Second - $connection_result"
-        exit 1
+        echo "2 Calls_Total - Freeswitch not responding!"
+        exit
 fi
 
-# Check existing number of calls
-call_count=`echo $connection|grep total|awk '{print $1}'`
-
-if [ $call_count -gt 500 ]; then
-        call_count_status=1
-        call_count_result="Possible DDoS attack"
+# Calculate call counts if there is any
+if echo "$DETAILED_CALLS" | grep '^0 total'; then
+	echo "0 Calls_Total - There is 0 calls on this FreeSWITCH server"
 else
-        call_count_status=0
-        call_count_result="Call counts looks good."
+	BRIDGED_CALLS=`echo "$DETAILED_CALLS" | tail -n +2 | head -n -2 | grep -v 'RINGING\|EARLY'| awk -F % '{print $10, $63, $14, $11, $12, $9, $25, $56}'`
+	RINGING_CALLS=`echo "$DETAILED_CALLS" | grep 'RINGING\|EARLY' | awk -F % '{print $4}'`
+
+	## Number of calls in RINGING stage
+	if [[ ! -z "$RINGING_CALLS" ]]; then
+		NUM_RING=`echo "$RINGING_CALLS" | wc -l`
+	else
+		NUM_RING=0
+	fi
+
+	## Number of bridged calls
+	if [[ ! -z "$BRIDGED_CALLS" ]]; then
+		NUM_BRIDGED=`echo "$BRIDGED_CALLS" | wc -l`
+	else
+		NUM_BRIDGED=0
+	fi
+
+
+	## Number of call transfer
+	NUM_TRANS=`echo "$BRIDGED_CALLS" | grep -c 'uuid_bridge'`
+	BRIDGED_CALLS=`echo "$BRIDGED_CALLS" | grep -v 'uuid_bridge'`
+
+	## Number of conference calls
+	NUM_CONF=`echo "$BRIDGED_CALLS" | grep -c 'conference_keyword'`
+	BRIDGED_CALLS=`echo "$BRIDGED_CALLS" | grep -v 'conference_keyword'`
+
+	## Number of outbound calls
+	NUM_OUTBOUND=`echo "$BRIDGED_CALLS" | grep -c 'lcr'`
+
+	## Number of inbound calls
+	NUM_INBOUND=`echo "$BRIDGED_CALLS" | grep -c 'inbound_keyword'`
+
+	## Number of intranet calls
+	NUM_INTRA=`echo "$BRIDGED_CALLS" | grep -c 'intranet_keyword'`
+
+	## Number of inbound FAX calls
+	NUM_IN_FAX=`echo "$BRIDGED_CALLS" | grep -c 'rxfax'`
+
+	## Number of extension calls
+	NUM_DEVICE=`echo "$BRIDGED_CALLS" | grep -c 'user/'`
+
 fi
 
-# Check calls per second
-cps=`/usr/local/freeswitch/bin/fs_cli -p $cli_password -x "status" | grep -o -P "(?<=\(s\) )[0-9]+(?=/)"`
+## Number of zombie calls
+DURATION_CAP=$(($EPOCH_NOW - $ZOMBIE_RING_DURATION))
+BRIDGE_CAP=$(($EPOCH_NOW - $ZOMBIE_CALL_DURATION))
 
-if [ $cps -gt 20 ]; then
-	cps_status=2
-	cps_result="Possible DDos attack"
+if [[ ${NUM_RING} -ne 0 ]]; then
+        ZOMBIE_RING=$(
+                echo "$RINGING_CALLS" | awk -v DURATION_CAP=$DURATION_CAP '{
+                        if ($1 < DURATION_CAP)
+				print $1;
+                }')
+
+#        ZOMBIE_BRIDGE=$(
+#                echo "$BRIDGED_CALLS" | awk -v DURATION_CAP=$BRIDGE_CAP '{
+#                        if ($2 < DURATION_CAP)
+#                                print $1":"$2;
+#                }')
+#	echo "$ZOMBIE_BRIDGE"
+
+#	echo "ZOMBIE RING $ZOMBIE_RING"
+#	echo "ZOMBIE BRIDGE $ZOMBIE_BRIDGE"
+
+        if [[ ! -z "$ZOMBIE_RING" ]]; then
+		NUM_ZOMBIE_RING=`echo "$ZOMBIE_RING" | wc -l`
+	else
+		NUM_ZOMBIE_RING=0
+	fi
+
+        if [[ ${NUM_ZOMBIE_RING} -lt ${ZOMBIE_WARN} ]]; then
+		echo "0 Calls_Zombie zombie=${NUM_ZOMBIE_RING} There are ${NUM_ZOMBIE_RING} zomebie calls, but we are okay for now"
+        elif [[ ${NUM_ZOMBIE_RING} -ge ${ZOMBIE_WARN} && ${NUM_ZOMBIE_RING} -lt ${ZOMBIE_CRIT} ]]; then
+		echo "1 Calls_Zombie zombie=${NUM_ZOMBIE_RING} There are ${NUM_ZOMBIE_RING} zombie calls at the moment, schedule a FreeSWITCH restart soon"
+        else
+		echo "2 Calls_Zombie zombie=${NUM_ZOMBIE_RING} Too many zomebie calls (${NUM_ZOMBIE_RING}), schedule a FreeSWITCH restart ASAP"
+        fi
 else
-	cps_status=0
-	cps_result="calls per second"
+	echo "0 Calls_Zombie zombie=0 Hooray, no zombie calls"
 fi
 
-# Build a message up
-echo "$call_count_status Call_Count count=$call_count;;500;0;1000 $call_count live calls, $call_count_result"
-echo "$cps_status Calls_Per_Second cps=$cps;15;20;0;30 $cps $cps_result"
+## Number of calls report
+NUM_RING=$((${NUM_RING} - ${NUM_ZOMBIE_RING}))
+NUM_TOTAL=$((${NUM_RING} + ${NUM_BRIDGED} - ${NUM_INTRA}))
+NUM_REAL=$((${NUM_BRIDGED} - ${NUM_INTRA}))
 
-exit 0
+echo "0 Calls_Total total=${NUM_TOTAL} There are total ${NUM_TOTAL} live calls"
+echo "0 Calls_Bridged \
+bridged=${NUM_REAL}|\
+inbound=${NUM_INBOUND}|\
+outbound=${NUM_OUTBOUND}|\
+to_device=${NUM_DEVICE}|\
+trans=${NUM_TRANS}|\
+conf=${NUM_CONF}|\
+in_fax=${NUM_IN_FAX} \
+There are ${NUM_REAL} established calls"
+
+echo "0 Calls_Intra-core intra=${NUM_INTRA} There are ${NUM_INTRA} intra-core overhead calls"
+
+## DoS Detection
+if [[ ${NUM_RING} -lt ${DoS_WARN} ]]; then
+	echo "0 Calls_Ring ring=${NUM_RING} There are ${NUM_RING} calls in ringing stage"
+elif [[ ${NUM_RING} -ge ${DoS_WARN} && ${NUM_RING} -lt ${DoS_CRIT} ]]; then
+	echo "1 Calls_Ring ring=${NUM_RING} ${NUM_RING} calls are in ringing stage, it's higher than normal rate, keep an eye on it"
+else
+	echo "2 Calls_Ring ring=${NUM_RING} ${NUM_RING} calls in ringing stage, possible call blast attack"
+fi
+
+# Outbound call classification
+## National, NPA, and international
+NPA_CODE="242 246 264 268 284 340 345 441 473 649 664 670 671 684 721 758 767 784 787 809 829 849 868 869 876 939"
+NPA_GREP='^\+?1?(242|246|264|268|284|340|345|441|473|649|664|670|671|684|721|758|767|784|787|809|829|849|868|869|876|939)'
+US_NUM_GREP='^\+?1\d{10}(?!\d)|^\d{10}(?!\d)|^\d{7}(?!\d)'
+BRIDGED_CALLS=`echo "$BRIDGED_CALLS" | grep 'lcr'`
+
+if [[ ! -z "$BRIDGED_CALLS" ]]; then
+	### National calls
+	NATIONAL_CALLS=`echo "$BRIDGED_CALLS" | grep -P "${US_NUM_GREP}"`
+	if [[ ! -z "$NATIONAL_CALLS" ]];then
+		NUM_NATIONAL=`echo "$NATIONAL_CALLS" | wc -l`
+		echo "0 Calls_National national=${NUM_NATIONAL} ${NUM_NATIONAL} calls are US national"
+	else
+		echo "0 Calls_National national=0 No US national calls at the moment"
+	fi
+
+	### NPA calls
+	NUM_NPA=`echo "$NATIONAL_CALLS" | grep -cP "${NPA_GREP}"`
+	echo "0 Calls_NPA npa=${NUM_NPA} ${NUM_NPA} calls are high cost North America area codes"
+
+	### International calls
+	INTERNATIONAL_GREP='^\+[2-9]\d+(?!\d)'
+	NUM_INTERNATIONAL=`echo "$BRIDGED_CALLS" | grep -cP "${INTERNATIONAL_GREP}"`
+
+	echo "0 Calls_International international=${NUM_INTERNATIONAL} There are ${NUM_INTERNATIONAL} international calls"
+else
+	echo "0 Calls_National national=0 No US national calls at the moment"
+	echo "0 Calls_NPA npa=0 No high cost NPA calls at the moment"
+	echo "0 Calls_International international=0 No international calls at the moment"
+fi
+
+
+exit
